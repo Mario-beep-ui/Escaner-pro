@@ -1005,7 +1005,8 @@ const MariaTool = {
     queryAI: async (text) => {
         Loader.show("MAR-IA está pensando...");
         try {
-            const systemPrompt = "Eres un asistente útil que resume textos. Responde solo con texto plano en español, sin markdown, sin emojis, de forma clara y explicativa para un usuario común.";
+            // PROMPT OPTIMIZADO PARA HTML
+            const systemPrompt = "Eres un experto resumiendo documentos. Tu respuesta debe ser EXCLUSIVAMENTE en formato HTML válido (sin markdown). Usa etiquetas <p> para párrafos, <ul> y <li> para listas, y <strong> para resaltar puntos clave. El estilo debe ser profesional, claro y fácil de leer. NO uses asteriscos, ni emojis, ni bloques de código.";
             const userPrompt = `Analiza el siguiente texto extraído de un documento y genera un resumen explicativo claro:\n\n${text}`;
             
             // CONEXIÓN DIRECTA A API DE DEEPSEEK
@@ -1042,9 +1043,13 @@ const MariaTool = {
         Loader.hide();
     },
     showModal: (text) => {
-        document.getElementById('maria-result-text').innerText = text;
+        // USO DE INNERHTML PARA RENDERIZADO CORRECTO
+        document.getElementById('maria-result-text').innerHTML = text;
         document.getElementById('modal-maria').classList.add('active');
-        MariaTool.utterance = new SpeechSynthesisUtterance(text);
+        
+        // LIMPIEZA DE ETIQUETAS PARA LA LECTURA
+        const plainText = text.replace(/<[^>]+>/g, '');
+        MariaTool.utterance = new SpeechSynthesisUtterance(plainText);
         MariaTool.utterance.lang = 'es-MX';
         MariaTool.utterance.onend = () => MariaTool.resetSpeechUI();
     },
@@ -1053,18 +1058,28 @@ const MariaTool = {
         document.getElementById('modal-maria').classList.remove('active');
     },
     toggleSpeech: () => {
-        if(MariaTool.isReading) {
-            if(MariaTool.speechSynth.paused) {
-                MariaTool.speechSynth.resume();
-                MariaTool.updateSpeechUI(true);
-            } else {
-                MariaTool.speechSynth.pause();
-                MariaTool.updateSpeechUI(false, "Continuar");
-            }
-        } else {
-            MariaTool.speechSynth.speak(MariaTool.utterance);
+        const synth = MariaTool.speechSynth;
+        
+        // Caso: No está hablando ni pausado (inicio)
+        if (!synth.speaking && !synth.paused) {
+            synth.cancel(); // Asegurar limpieza previa
+            synth.speak(MariaTool.utterance);
             MariaTool.isReading = true;
             MariaTool.updateSpeechUI(true);
+            return;
+        }
+
+        // Caso: Está pausado -> Reanudar
+        if (synth.paused) {
+            synth.resume();
+            MariaTool.updateSpeechUI(true);
+            return;
+        }
+
+        // Caso: Está hablando -> Pausar
+        if (synth.speaking) {
+            synth.pause();
+            MariaTool.updateSpeechUI(false, "Continuar");
         }
     },
     stopSpeech: () => {
