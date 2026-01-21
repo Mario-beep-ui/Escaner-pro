@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="description" content="Escáner Pro & INE Maker">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Escáner Pro">
+
+<link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIkVzY8OhbmVyIFBybyIsCiAgInNob3J0X25hbWUiOiAiRXNjw6FuZXIiLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmGal9vbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNmZmZmZmYiLAogICJ0aGVtZV9jb2xvciI6ICIjMjU2M2ViIiwKICAiaWNvbnMiOiBbewogICAgInNyYyI6ICJodHRwczovL3ZpYS5wbGFjZWhvbGRlci5jb20vMTkyLnBuZz90ZXh0PVNjYW4iLAogICAgInNpemVzIjogIjE5MngxOTIiLAogICAgInR5cGUiOiAiaW1hZ2UvcG5nIgogIH1dCn0=">
+
+<title>Escáner Pro</title>
+
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+
+<style>
+    :root {
+        /* Paleta de Colores Premium */
+        --primary: #2563eb;       
+        --primary-dark: #1d4ed8;
+        --secondary: #eff6ff;     
+        --accent: #3b82f6;
+        --bg: #f8fafc;            
+        --surface: #ffffff;
+        --text-main: #1e293b;     
+        --text-muted: #64748b;    
+        --danger: #ef4444;
+        
+        /* Variables de UI */
+        --radius-lg: 24px;
+        --radius-md: 16px;
+        --radius-sm: 12px;
+        --header-height: 64px;
+        --safe-bottom: env(safe-area-inset-bottom, 20px);
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+    }
+
+    * { box-sizing: border-box; tap-highlight-color: transparent; user-select: none; -webkit-font-smoothing: antialiased; }
+    
+    body { 
+        margin: 0; font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+        background: var(--bg); color: var(--text-main); 
+        height: 100vh; overflow: hidden; display: flex; flex-direction: column; 
+    }
+
+    /* Inputs ocultos */
+    #hidden-input-camera, #hidden-input-gallery, #ine-input, #maria-input { display: none; }
+
+    /* SISTEMA DE PANTALLAS */
+    .app-screen {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: var(--bg); display: none; flex-direction: column;
+        z-index: 10; animation: fadeIn 0.25s ease-out;
+    }
+    .app-screen.active { display: flex; }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+
+    /* HEADER */
+    header {
+        background: var(--surface); padding: 0 20px;
+        display: flex; align-items: center; justify-content: space-between;
+        height: var(--header-height); box-shadow: var(--shadow-sm); 
+        z-index: 20; position: relative;
+    }
+    header h1 { font-size: 20px; margin: 0; font-weight: 700; color: var(--text-main); letter-spacing: -0.5px; }
+    
+    .btn-icon { 
+        background: transparent; border: none; color: var(--text-main); 
+        padding: 10px; cursor: pointer; border-radius: 50%; 
+        display: flex; align-items: center; justify-content: center;
+    }
+    .btn-icon:active { background: var(--secondary); color: var(--primary); }
+
+    /* CONTENIDO */
+    .content { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; padding-bottom: 100px; }
+    .content.dark-bg { background: #0f172a; display: flex; align-items: center; justify-content: center; padding: 0; }
+    .content.padded { padding: 20px; padding-bottom: 100px; }
+
+    /* SECCIÓN HERRAMIENTAS */
+    .section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 20px 10px 20px; }
+    
+    .tools-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 20px; margin-bottom: 20px; }
+    
+    .tool-card {
+        background: var(--surface); padding: 16px; border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm); display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+        border: 1px solid rgba(0,0,0,0.04); transition: transform 0.2s;
+    }
+    .tool-card:active { transform: scale(0.96); background: var(--secondary); border-color: var(--primary); }
+    .tool-card i { font-size: 28px; color: var(--primary); }
+    .tool-card span { font-size: 13px; font-weight: 600; color: var(--text-main); }
+
+    /* LISTA DOCS */
+    .doc-grid { padding: 0 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+    .doc-card { 
+        background: var(--surface); border-radius: var(--radius-md); overflow: hidden; 
+        box-shadow: var(--shadow-sm); position: relative; aspect-ratio: 3/4; 
+        border: 1px solid rgba(0,0,0,0.04); transition: transform 0.2s;
+    }
+    .doc-card:active { transform: scale(0.96); }
+    .doc-thumb { width: 100%; height: 70%; background-size: cover; background-position: center; background-color: var(--secondary); border-bottom: 1px solid #f1f5f9; }
+    .doc-info { padding: 12px; height: 30%; display: flex; flex-direction: column; justify-content: center; }
+    .doc-info strong { font-size: 14px; color: var(--text-main); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .doc-info span { font-size: 11px; color: var(--text-muted); }
+    .doc-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 8px; }
+    .mini-btn { background: rgba(255,255,255,0.95); backdrop-filter: blur(4px); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); color: var(--text-main); border:none; }
+
+    /* FAB */
+    .fab-container { position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: center; pointer-events: none; z-index: 30; }
+    .fab { pointer-events: auto; width: 64px; height: 64px; background: var(--primary); color: white; border-radius: 24px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg); transition: transform 0.2s; cursor: pointer; }
+    .fab:active { transform: scale(0.95); background: var(--primary-dark); }
+
+    /* INE MODULE STYLES */
+    .ine-placeholder {
+        width: 100%; height: 200px; border: 2px dashed #cbd5e1; border-radius: var(--radius-md);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        background: #f8fafc; margin-bottom: 20px; cursor: pointer; transition: all 0.2s;
+        position: relative; overflow: hidden;
+    }
+    .ine-placeholder.filled { border-style: solid; border-color: var(--primary); background: white; }
+    .ine-placeholder img { width: 100%; height: 100%; object-fit: contain; display: none; }
+    .ine-placeholder.filled img { display: block; }
+    .ine-placeholder.filled .placeholder-content { display: none; }
+    
+    .ine-label { font-size: 14px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; display: block; }
+    .btn-block { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 16px; box-shadow: var(--shadow-sm); cursor: pointer; }
+    .btn-block:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+    /* CROPPER CONTAINER */
+    .cropper-wrapper { width: 100%; height: 100%; background: #000; }
+    
+    /* TOOLBAR & SLIDERS */
+    .toolbar { background: var(--surface); border-top: 1px solid #f1f5f9; min-height: 80px; display: flex; align-items: center; justify-content: space-evenly; padding-bottom: var(--safe-bottom); padding-top: 10px; z-index: 20; }
+    .tool-btn { background: none; border: none; display: flex; flex-direction: column; align-items: center; color: var(--text-muted); font-size: 11px; font-weight: 500; gap: 6px; padding: 8px; min-width: 60px; border-radius: 12px; }
+    .tool-btn.active { color: var(--primary); }
+    .tool-btn .icon-box { width: 40px; height: 40px; border-radius: 12px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; }
+    .tool-btn.active .icon-box { background: var(--secondary); color: var(--primary); }
+
+    /* LOADER */
+    #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.98); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); transition: opacity 0.4s; }
+    #loader.hidden { opacity: 0; pointer-events: none; }
+    .spinner { width: 48px; height: 48px; border: 4px solid var(--secondary); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite; margin-bottom: 20px; }
+    
+    /* BOTTOM SHEET */
+    .bottom-sheet-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; display: none; align-items: flex-end; opacity: 0; transition: opacity 0.3s; }
+    .bottom-sheet-overlay.active { display: flex; opacity: 1; }
+    .bottom-sheet { background: var(--surface); width: 100%; border-radius: 24px 24px 0 0; padding: 24px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+    .bottom-sheet-overlay.active .bottom-sheet { transform: translateY(0); }
+    .sheet-option { display: flex; align-items: center; padding: 16px; border-radius: 16px; background: var(--bg); margin-bottom: 12px; color: var(--text-main); font-weight: 600; cursor: pointer; }
+    .sheet-option i { margin-right: 16px; color: var(--primary); font-size: 24px; }
+
+    /* MODAL MAR-IA */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.active { display: flex; }
+    .modal-content { background: white; border-radius: 24px; width: 100%; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; }
+    .modal-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+    .modal-body { padding: 20px; overflow-y: auto; font-size: 15px; line-height: 1.6; color: var(--text-main); }
+    .modal-footer { padding: 20px; border-top: 1px solid #eee; display: flex; gap: 10px; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<input type="file" id="hidden-input-camera" accept="image/*" capture="environment">
+<input type="file" id="hidden-input-gallery" accept="image/*">
+<input type="file" id="ine-input" accept="image/*">
+<input type="file" id="maria-input" accept="image/*,application/pdf">
+
+<div id="loader">
+    <div class="spinner"></div>
+    <div class="status-text" id="status-msg">Iniciando sistema...</div>
+</div>
+
+<div class="modal-overlay" id="modal-maria">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="margin:0">Resumen MAR-IA</h3>
+            <button class="btn-icon" onclick="MariaTool.closeModal()"><span class="material-icons-round">close</span></button>
+        </div>
+        <div class="modal-body" id="maria-result-text">
+            </div>
+        <div class="modal-footer">
+            <button class="btn-block" id="btn-maria-voice" onclick="MariaTool.toggleSpeech()">
+                <span class="material-icons-round" style="vertical-align: middle; margin-right: 8px;">volume_up</span>
+                Leer resumen
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-storage">
+    <div class="modal-content" style="height:80vh;">
+        <div class="modal-header">
+            <h3 style="margin:0">Gestión de Archivos</h3>
+            <button class="btn-icon" onclick="StorageTool.close()"><span class="material-icons-round">close</span></button>
+        </div>
+        <div class="modal-body" id="storage-list" style="padding:0;">
+            <!-- List -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn-block" style="background:var(--danger);" onclick="StorageTool.deleteSelected()">
+                Eliminar Seleccionados
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="screen-dashboard" class="app-screen active">
+    <header>
+        <h1>Mis Documentos</h1>
+        <button class="btn-icon" onclick="App.showScreen('screen-settings')" title="Configuración">
+            <span class="material-icons-round">settings</span>
+        </button>
+    </header>
+    
+    <div class="content" id="doc-list">
+        <div class="section-title">Herramientas</div>
+        <div class="tools-grid">
+            <div class="tool-card" onclick="IneTool.open()">
+                <i class="material-icons-round">badge</i>
+                <span>INE a PDF</span>
+            </div>
+            <div class="tool-card" onclick="MariaTool.trigger()">
+                <i class="material-icons-round">psychology</i>
+                <span>Generar con MAR-IA</span>
+            </div>
+        </div>
+
+        <div class="section-title">Recientes</div>
+        <div id="docs-container">
+            <div class="empty-state" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                <span class="material-icons-round" style="font-size: 48px; margin-bottom: 10px; color: #cbd5e1;">description</span>
+                <p style="margin:0; font-size:14px;">Tus escaneos aparecerán aquí</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="fab-container">
+        <div class="fab" onclick="App.toggleSourceSheet(true)">
+            <span class="material-icons-round">add</span>
+        </div>
+    </div>
+</div>
+
+<div id="screen-ine-home" class="app-screen">
+    <header>
+        <button class="btn-icon" onclick="App.showScreen('screen-dashboard')" title="Volver">
+            <span class="material-icons-round">arrow_back</span>
+        </button>
+        <h1>Copia INE</h1>
+        <div style="width:40px"></div>
+    </header>
+    
+    <div class="content padded">
+        <span class="ine-label">Parte Frontal</span>
+        <div class="ine-placeholder" id="ine-front" onclick="IneTool.selectSide('front')">
+            <div class="placeholder-content" style="text-align:center; color:var(--text-muted)">
+                <span class="material-icons-round" style="font-size:32px">credit_card</span>
+                <p style="margin:5px 0 0; font-size:12px;">Toca para añadir frente</p>
+            </div>
+            <img id="img-front-preview">
+        </div>
+
+        <span class="ine-label">Parte Trasera</span>
+        <div class="ine-placeholder" id="ine-back" onclick="IneTool.selectSide('back')">
+            <div class="placeholder-content" style="text-align:center; color:var(--text-muted)">
+                <span class="material-icons-round" style="font-size:32px; transform: rotateY(180deg);">credit_card</span>
+                <p style="margin:5px 0 0; font-size:12px;">Toca para añadir reverso</p>
+            </div>
+            <img id="img-back-preview">
+        </div>
+
+        <div style="margin-top: 30px;">
+            <button id="btn-ine-gen" class="btn-block" onclick="IneTool.generatePDF()" disabled>
+                Generar PDF Oficial
+            </button>
+            <p style="text-align:center; font-size:12px; color:var(--text-muted); margin-top:10px;">
+                Se generará un PDF tamaño carta con medidas oficiales.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div id="screen-ine-crop" class="app-screen">
+    <header style="background:black; color:white; border:none;">
+        <button class="btn-icon" onclick="IneTool.cancelCrop()" style="color:white">
+            <span class="material-icons-round">close</span>
+        </button>
+        <h1 style="color:white">Recortar ID</h1>
+        <button class="btn-icon" onclick="IneTool.confirmCrop()" style="color:var(--primary)">
+            <span class="material-icons-round">check</span>
+        </button>
+    </header>
+    <div class="content" style="background:black; overflow:hidden; padding:0;">
+        <div class="cropper-wrapper">
+            <img id="ine-cropper-img" style="max-width:100%;">
+        </div>
+    </div>
+    <div class="toolbar" style="background:black; border-top:1px solid #333;">
+        <button class="tool-btn" onclick="IneTool.rotate(-90)" style="color:white">
+            <span class="material-icons-round">rotate_left</span>
+            <span>Rotar</span>
+        </button>
+        <span style="color:#666; font-size:12px;">Ajusta al borde de la tarjeta</span>
+        <button class="tool-btn" onclick="IneTool.rotate(90)" style="color:white">
+            <span class="material-icons-round">rotate_right</span>
+            <span>Rotar</span>
+        </button>
+    </div>
+</div>
+
+<div id="screen-crop" class="app-screen">
+    <header>
+        <button class="btn-icon" onclick="App.confirmCancelSession()">
+            <span class="material-icons-round">close</span>
+        </button>
+        <h1>Ajustar</h1>
+        <button class="btn-icon" onclick="Scanner.finishCrop()" style="color:var(--primary)">
+            <span class="material-icons-round">check</span>
+        </button>
+    </header>
+    <div class="content dark-bg">
+        <div id="crop-container" style="position:relative; box-shadow:0 20px 50px rgba(0,0,0,0.5);">
+            <canvas id="layer-image" style="position:absolute; top:0; left:0; z-index:1"></canvas>
+            <canvas id="layer-overlay" style="position:absolute; top:0; left:0; z-index:2"></canvas>
+        </div>
+    </div>
+    <div class="toolbar" style="justify-content:center; height:60px; min-height:60px;">
+        <span style="color:var(--text-muted); font-size:13px;">Arrastra las esquinas azules</span>
+    </div>
+</div>
+
+<div id="screen-preview" class="app-screen">
+    <header>
+        <button class="btn-icon" onclick="App.showScreen('screen-crop')">
+            <span class="material-icons-round">crop</span>
+        </button>
+        <h1>Editar</h1>
+        <button class="btn-icon" onclick="Session.addPage()" style="color:var(--primary); width:auto; font-weight:600; font-size:14px;">
+            <span class="material-icons-round" style="margin-right:4px;">add_photo_alternate</span>
+        </button>
+    </header>
+    <div style="position:absolute; top:80px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.6); color:white; padding:4px 12px; border-radius:20px; font-size:12px; z-index:25;" id="page-indicator">Página 1</div>
+    <div class="content dark-bg" style="flex-direction: column;">
+        <canvas id="preview-canvas" style="max-width:90%; max-height:75vh; box-shadow:0 8px 30px rgba(0,0,0,0.5); margin-bottom:20px;"></canvas>
+        <div id="slider-box" style="width:80%; background:rgba(255,255,255,0.9); padding:10px; border-radius:20px; display:none; align-items:center; gap:10px;">
+            <span class="material-icons-round">brightness_6</span>
+            <input type="range" id="brightness-slider" min="-100" max="100" value="0" oninput="Scanner.updateBrightness(this.value)" style="width:100%; accent-color:var(--primary);">
+        </div>
+    </div>
+    <div class="toolbar" style="overflow-x:auto; padding:0 10px; gap:10px; justify-content:flex-start;">
+        <button class="tool-btn active" onclick="Scanner.applyFilter('magic', this)">
+            <div class="icon-box"><span class="material-icons-round">auto_fix_high</span></div>
+            <span>Mágico</span>
+        </button>
+        <button class="tool-btn" onclick="Scanner.applyFilter('bw', this)">
+            <div class="icon-box"><span class="material-icons-round">description</span></div>
+            <span>B/N</span>
+        </button>
+        <button class="tool-btn" onclick="Scanner.toggleSlider()">
+            <div class="icon-box"><span class="material-icons-round">tune</span></div>
+            <span>Ajuste</span>
+        </button>
+        <div style="width:1px; background:#e2e8f0; height:40px; margin:0 5px;"></div>
+        <button onclick="Session.finishSession()" style="margin-left:auto; background:var(--primary); color:white; border:none; padding:8px 16px; border-radius:12px; font-weight:600; box-shadow:var(--shadow-sm);">Terminar</button>
+    </div>
+</div>
+
+<div id="screen-settings" class="app-screen">
+    <header>
+        <button class="btn-icon" onclick="App.showScreen('screen-dashboard')">
+            <span class="material-icons-round">arrow_back</span>
+        </button>
+        <h1>Ajustes</h1>
+        <div style="width:40px"></div>
+    </header>
+    <div class="content padded">
+        <div style="background:var(--surface); padding:20px; border-radius:16px; margin-bottom:12px;">
+            <h4 style="margin:0 0 10px 0;">Almacenamiento</h4>
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;">
+                <span>Documentos:</span>
+                <strong id="storage-count">Cargando...</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;">
+                <span>Uso estimado:</span>
+                <strong id="storage-size">...</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-size:14px;">
+                <span>Disponible:</span>
+                <strong id="storage-available">Calc...</strong>
+            </div>
+            <button class="btn-block" style="background:var(--secondary); color:var(--primary); font-size:14px;" onclick="StorageTool.open()">
+                Gestionar / Liberar Espacio
+            </button>
+        </div>
+
+        <div style="background:var(--surface); padding:20px; border-radius:16px; margin-bottom:12px;">
+            <h4 style="margin:0 0 5px 0;">Calidad PDF</h4>
+            <select id="set-quality" onchange="Settings.save()" style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px;">
+                <option value="0.5">Baja (Rápido)</option>
+                <option value="0.7" selected>Media (Recomendado)</option>
+                <option value="0.95">Alta (Lento)</option>
+            </select>
+        </div>
+        <div style="text-align:center; font-size:12px; color:var(--text-muted); margin-top:20px;">
+            Escáner Pro + INE Maker v4.0
+        </div>
+    </div>
+</div>
+
+<div class="bottom-sheet-overlay" id="sheet-source" onclick="App.toggleSourceSheet(false)">
+    <div class="bottom-sheet" onclick="event.stopPropagation()">
+        <h3 style="margin-top:0; margin-bottom:20px;">Nueva Captura</h3>
+        <div class="sheet-option" onclick="document.getElementById('hidden-input-camera').click(); App.toggleSourceSheet(false)">
+            <i class="material-icons-round">photo_camera</i><span>Usar Cámara</span>
+        </div>
+        <div class="sheet-option" onclick="document.getElementById('hidden-input-gallery').click(); App.toggleSourceSheet(false)">
+            <i class="material-icons-round">photo_library</i><span>Galería</span>
+        </div>
+    </div>
+</div>
+
+<div class="bottom-sheet-overlay" id="sheet-ine-source" onclick="IneTool.toggleSheet(false)">
+    <div class="bottom-sheet" onclick="event.stopPropagation()">
+        <h3 style="margin-top:0; margin-bottom:20px;" id="ine-sheet-title">Añadir Imagen</h3>
+        <div class="sheet-option" onclick="IneTool.triggerInput('camera')">
+            <i class="material-icons-round">photo_camera</i><span>Cámara</span>
+        </div>
+        <div class="sheet-option" onclick="IneTool.triggerInput('gallery')">
+            <i class="material-icons-round">photo_library</i><span>Galería</span>
+        </div>
+    </div>
+</div>
+
+<script>var Module={onRuntimeInitialized:function(){App.onOpenCvReady()},onError:function(e){console.error(e)}};</script>
+<script async src="https://docs.opencv.org/4.8.0/opencv.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+<script>
+const MARIA_API_KEY = "sk-646a5b86d1de4ee186dfac833541452b";
+
+/* =========================================
+   1. GESTIÓN GLOBAL Y NAVEGACIÓN
+   ========================================= */
+const App = {
+    cvReady: false,
+    init: () => {
+        Settings.load();
+        setTimeout(() => {
+            if (!App.cvReady) {
+                document.getElementById('status-msg').innerText = "Cargando motor de visión...";
+                setTimeout(() => document.getElementById('loader').classList.add('hidden'), 5000);
+            }
+        }, 1000);
+        
+        // Listeners Globales
+        document.getElementById('hidden-input-camera').addEventListener('change', App.handleInput);
+        document.getElementById('hidden-input-gallery').addEventListener('change', App.handleInput);
+        document.getElementById('ine-input').addEventListener('change', IneTool.handleFile);
+        document.getElementById('maria-input').addEventListener('change', MariaTool.handleFile);
+
+        DB.init().then(App.loadDocs);
+    },
+    onOpenCvReady: () => {
+        console.log("OpenCV Listo");
+        App.cvReady = true;
+        document.getElementById('loader').classList.add('hidden');
+    },
+    showScreen: (id) => {
+        document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(id === 'screen-dashboard') App.loadDocs();
+        if(id === 'screen-settings') Settings.updateStats();
+    },
+    toggleSourceSheet: (show) => {
+        const sheet = document.getElementById('sheet-source');
+        if(show) { sheet.classList.add('active'); sheet.style.display = 'flex'; }
+        else { sheet.classList.remove('active'); setTimeout(() => sheet.style.display='none', 300); }
+    },
+    handleInput: (e) => {
+        if (!e.target.files[0]) return;
+        Loader.show("Cargando imagen...");
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => { Scanner.start(img); e.target.value = ''; };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(e.target.files[0]);
+    },
+    confirmCancelSession: () => {
+        if(Session.pages.length > 0 && confirm("¿Descartar escaneo actual?")) {
+            Session.reset(); App.showScreen('screen-dashboard');
+        } else if(Session.pages.length === 0) {
+            App.showScreen('screen-dashboard');
+        }
+    },
+    loadDocs: async () => {
+        const docs = await DB.getAll();
+        const container = document.getElementById('docs-container');
+        if(docs.length === 0) {
+            container.innerHTML = `<div class="empty-state" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                <span class="material-icons-round" style="font-size: 48px; margin-bottom: 10px; color: #cbd5e1;">description</span>
+                <p style="margin:0; font-size:14px;">Tus documentos aparecerán aquí</p>
+            </div>`;
+            return;
+        }
+        container.innerHTML = `<div class="doc-grid">` + docs.map(d => {
+            const pageCount = d.pages ? d.pages.length : 1;
+            return `
+            <div class="doc-card" onclick="PDF.generate(${d.id})">
+                <div class="doc-thumb" style="background-image: url(${d.thumb || d.img})">
+                    ${pageCount > 1 ? `<div class="doc-page-count" style="position:absolute; bottom:5px; right:5px; background:rgba(0,0,0,0.6); color:white; font-size:10px; padding:2px 6px; border-radius:4px;">${pageCount} págs</div>` : ''}
+                </div>
+                <div class="doc-info">
+                    <strong>${d.name}</strong>
+                    <span>${new Date(d.date).toLocaleDateString()}</span>
+                </div>
+                <div class="doc-actions">
+                    <button class="mini-btn" onclick="event.stopPropagation(); App.deleteDoc(${d.id})"><span class="material-icons-round" style="color:var(--danger)">delete</span></button>
+                    <button class="mini-btn" onclick="event.stopPropagation(); PDF.generate(${d.id})"><span class="material-icons-round">picture_as_pdf</span></button>
+                </div>
+            </div>`;
+        }).join('') + `</div>`;
+    },
+    deleteDoc: async (id) => {
+        if(confirm("¿Eliminar documento?")) { await DB.delete(id); App.loadDocs(); }
+    }
+};
+
+/* =========================================
+   2. MÓDULO INE A PDF (REVISADO: CARTA + HORIZONTAL + SIN TEXTO)
+   ========================================= */
+const IneTool = {
+    data: { front: null, back: null },
+    currentSide: null,
+    cropper: null,
+
+    open: () => {
+        App.showScreen('screen-ine-home');
+        if(!IneTool.data.front && !IneTool.data.back) IneTool.clearUI();
+    },
+    clearUI: () => {
+        IneTool.data = { front: null, back: null };
+        ['front', 'back'].forEach(side => {
+            const el = document.getElementById(`ine-${side}`);
+            el.classList.remove('filled');
+            el.querySelector('img').src = '';
+        });
+        document.getElementById('btn-ine-gen').disabled = true;
+    },
+    selectSide: (side) => {
+        IneTool.currentSide = side;
+        const title = side === 'front' ? 'INE Frontal' : 'INE Reverso';
+        document.getElementById('ine-sheet-title').innerText = title;
+        IneTool.toggleSheet(true);
+    },
+    toggleSheet: (show) => {
+        const sheet = document.getElementById('sheet-ine-source');
+        if(show) { sheet.classList.add('active'); sheet.style.display = 'flex'; }
+        else { sheet.classList.remove('active'); setTimeout(()=>sheet.style.display='none',300); }
+    },
+    triggerInput: (type) => {
+        IneTool.toggleSheet(false);
+        const input = document.getElementById('ine-input');
+        if(type === 'camera') input.setAttribute('capture', 'environment');
+        else input.removeAttribute('capture');
+        input.click();
+    },
+    handleFile: (e) => {
+        if(e.target.files && e.target.files[0]) {
+            Loader.show("Abriendo editor...");
+            const reader = new FileReader();
+            reader.onload = (ev) => { IneTool.startCropper(ev.target.result); e.target.value = ''; };
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    },
+    startCropper: (imgSrc) => {
+        App.showScreen('screen-ine-crop');
+        const imgEl = document.getElementById('ine-cropper-img');
+        imgEl.src = imgSrc;
+        if(IneTool.cropper) IneTool.cropper.destroy();
+        setTimeout(() => {
+            IneTool.cropper = new Cropper(imgEl, {
+                viewMode: 1, dragMode: 'move', aspectRatio: 85.6 / 53.98,
+                autoCropArea: 0.9, background: false,
+                ready() { Loader.hide(); }
+            });
+        }, 100);
+    },
+    rotate: (deg) => { if(IneTool.cropper) IneTool.cropper.rotate(deg); },
+    cancelCrop: () => {
+        App.showScreen('screen-ine-home');
+        if(IneTool.cropper) { IneTool.cropper.destroy(); IneTool.cropper = null; }
+    },
+    confirmCrop: () => {
+        Loader.show("Procesando...");
+        if(!IneTool.cropper) return;
+        // Resolución HD para recorte de INE
+        const canvas = IneTool.cropper.getCroppedCanvas({ width: 1920, height: 1210, imageSmoothingQuality: 'high' });
+        const resultData = canvas.toDataURL('image/jpeg', 0.95);
+        IneTool.data[IneTool.currentSide] = resultData;
+        
+        const placeholder = document.getElementById(`ine-${IneTool.currentSide}`);
+        placeholder.classList.add('filled');
+        document.getElementById(`img-${IneTool.currentSide}-preview`).src = resultData;
+
+        if(IneTool.data.front && IneTool.data.back) document.getElementById('btn-ine-gen').disabled = false;
+        IneTool.cancelCrop();
+        Loader.hide();
+    },
+    generatePDF: async () => {
+        Loader.show("Generando PDF INE...");
+        const { jsPDF } = window.jspdf;
+        // Tamaño Carta
+        const pdf = new jsPDF({ unit: 'mm', format: 'letter' });
+        
+        const cardW = 85.6;
+        const cardH = 53.98;
+        const pageW = 215.9;
+        const pageH = 279.4;
+        const gap = 5; 
+        
+        const totalW = (cardW * 2) + gap;
+        const startX = (pageW - totalW) / 2;
+        const startY = (pageH - cardH) / 2;
+
+        // Colocar imágenes lado a lado exactamente iguales
+        pdf.addImage(IneTool.data.front, 'JPEG', startX, startY, cardW, cardH);
+        pdf.addImage(IneTool.data.back, 'JPEG', startX + cardW + gap, startY, cardW, cardH);
+        
+        // El resto queda en blanco por defecto
+
+        const filename = `INE_${Date.now()}.pdf`;
+        pdf.save(filename);
+        
+        // Miniatura compuesta
+        const thumbCanvas = document.createElement('canvas');
+        thumbCanvas.width = 400; thumbCanvas.height = 200;
+        const ctx = thumbCanvas.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0,0,400,200);
+        
+        const imgF = new Image(); imgF.src = IneTool.data.front;
+        const imgB = new Image(); imgB.src = IneTool.data.back;
+        await Promise.all([new Promise(r => imgF.onload = r), new Promise(r => imgB.onload = r)]);
+
+        ctx.drawImage(imgF, 10, 50, 180, 113);
+        ctx.drawImage(imgB, 210, 50, 180, 113);
+
+        const docEntry = {
+            id: Date.now(),
+            name: "Copia INE",
+            date: Date.now(),
+            img: thumbCanvas.toDataURL('image/jpeg', 0.6),
+            thumb: thumbCanvas.toDataURL('image/jpeg', 0.4),
+            pages: [thumbCanvas.toDataURL('image/jpeg', 0.8)] 
+        };
+        
+        // Modified for limit check
+        const saved = await DB.add(docEntry);
+        if(!saved) {
+            Loader.hide();
+            return;
+        }
+
+        Loader.hide();
+        App.showScreen('screen-dashboard');
+    }
+};
+
+/* =========================================
+   3. MÓDULO ESCÁNER GENERAL (REVISIÓN: RESOLUCIÓN DINÁMICA)
+   ========================================= */
+const Session = {
+    pages: [],
+    addPage: () => {
+        const cvs = document.getElementById('preview-canvas');
+        Session.pages.push(cvs.toDataURL('image/jpeg', Settings.data.quality));
+        Loader.show("Siguiente página...");
+        setTimeout(() => { App.toggleSourceSheet(true); Loader.hide(); }, 400);
+    },
+    finishSession: async () => {
+        const cvs = document.getElementById('preview-canvas');
+        Session.pages.push(cvs.toDataURL('image/jpeg', Settings.data.quality));
+        Loader.show("Guardando...");
+        
+        const img = new Image(); img.src = Session.pages[0];
+        await new Promise(r => img.onload = r);
+        
+        const thumbCvs = document.createElement('canvas');
+        thumbCvs.width = 200; thumbCvs.height = (img.height/img.width)*200;
+        thumbCvs.getContext('2d').drawImage(img,0,0,thumbCvs.width,thumbCvs.height);
+
+        const saved = await DB.add({
+            id: Date.now(),
+            name: `Doc ${new Date().toLocaleString()}`,
+            date: Date.now(),
+            pages: Session.pages,
+            thumb: thumbCvs.toDataURL('image/jpeg', 0.4)
+        });
+        
+        if(!saved) {
+            Loader.hide();
+            return;
+        }
+
+        Session.reset(); Loader.hide(); App.showScreen('screen-dashboard');
+    },
+    reset: () => { Session.pages = []; }
+};
+
+const Scanner = {
+    original: null, processed: null, corners: [],
+    start: (img) => {
+        Scanner.original = img;
+        if(Settings.data.autocrop && App.cvReady) Scanner.detectCV(img);
+        else Scanner.corners = [{x:0.1,y:0.1},{x:0.9,y:0.1},{x:0.9,y:0.9},{x:0.1,y:0.9}];
+        App.showScreen('screen-crop');
+        Scanner.initCropUI();
+        Loader.hide();
+    },
+    detectCV: (img) => {
+        try {
+            let src = cv.imread(img);
+            let gray = new cv.Mat();
+            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+            cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
+            cv.Canny(gray, gray, 75, 200);
+            let contours = new cv.MatVector();
+            let hierarchy = new cv.Mat();
+            cv.findContours(gray, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+            let maxArea=0, maxCnt=null;
+            for(let i=0; i<contours.size(); ++i) {
+                let cnt = contours.get(i);
+                let area = cv.contourArea(cnt);
+                if(area > 5000) {
+                    let peri = cv.arcLength(cnt, true);
+                    let approx = new cv.Mat();
+                    cv.approxPolyDP(cnt, approx, 0.02*peri, true);
+                    if(approx.rows === 4 && area > maxArea) { maxArea=area; maxCnt=approx; }
+                    else approx.delete();
+                }
+            }
+            if(maxCnt) {
+                Scanner.corners=[];
+                for(let i=0; i<4; i++) Scanner.corners.push({x:maxCnt.data32S[i*2]/img.width, y:maxCnt.data32S[i*2+1]/img.height});
+                maxCnt.delete(); Scanner.sortCorners();
+            } else Scanner.corners = [{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.8,y:0.8},{x:0.2,y:0.8}];
+            src.delete(); gray.delete(); contours.delete(); hierarchy.delete();
+        } catch(e) { Scanner.corners = [{x:0.1,y:0.1},{x:0.9,y:0.1},{x:0.9,y:0.9},{x:0.1,y:0.9}]; }
+    },
+    initCropUI: () => {
+        const box = document.getElementById('crop-container');
+        const img = Scanner.original;
+        const maxW = window.innerWidth - 32;
+        const maxH = window.innerHeight - 140;
+        let dW = maxW, dH = (img.height/img.width)*maxW;
+        if(dH > maxH) { dH = maxH; dW = (img.width/img.height)*maxH; }
+        
+        box.style.width = dW+'px'; box.style.height = dH+'px'; box.style.margin = "0 auto";
+        
+        const l1 = document.getElementById('layer-image');
+        const l2 = document.getElementById('layer-overlay');
+        l1.width = l2.width = dW; l1.height = l2.height = dH;
+        l1.getContext('2d').drawImage(img,0,0,dW,dH);
+        Scanner.addTouch(l2); Scanner.draw(l2);
+    },
+    draw: (cvs) => {
+        const ctx = cvs.getContext('2d');
+        const pts = Scanner.corners.map(p => ({x:p.x*cvs.width, y:p.y*cvs.height}));
+        ctx.clearRect(0,0,cvs.width,cvs.height);
+        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(0,0,cvs.width,cvs.height);
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y);
+        ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[3].x,pts[3].y); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y);
+        ctx.lineTo(pts[2].x,pts[2].y); ctx.lineTo(pts[3].x,pts[3].y); ctx.closePath(); ctx.stroke();
+        pts.forEach(p => {
+            ctx.beginPath(); ctx.arc(p.x,p.y,12,0,Math.PI*2); 
+            ctx.fillStyle='#2563eb'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.stroke();
+        });
+    },
+    addTouch: (cvs) => {
+        let active = -1;
+        const getP = e => {
+            const r = cvs.getBoundingClientRect();
+            const t = e.touches ? e.touches[0] : e;
+            return {x:(t.clientX-r.left)/cvs.width, y:(t.clientY-r.top)/cvs.height};
+        };
+        const start = e => {
+            e.preventDefault(); const p = getP(e);
+            let min=0.15;
+            Scanner.corners.forEach((c,i)=>{ const d=Math.hypot(c.x-p.x,c.y-p.y); if(d<min){min=d;active=i} });
+        };
+        const move = e => {
+            if(active<0)return; e.preventDefault(); const p=getP(e);
+            Scanner.corners[active] = {x:Math.max(0,Math.min(1,p.x)), y:Math.max(0,Math.min(1,p.y))};
+            requestAnimationFrame(()=>Scanner.draw(cvs));
+        };
+        const end = () => active = -1;
+        cvs.addEventListener('touchstart', start, {passive:false});
+        cvs.addEventListener('touchmove', move, {passive:false});
+        window.addEventListener('touchend', end);
+        cvs.addEventListener('mousedown', start);
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', end);
+    },
+    finishCrop: () => {
+        Loader.show("Procesando...");
+        setTimeout(() => {
+            const img = Scanner.original;
+            const src = cv.imread(img);
+            const w=img.width, h=img.height;
+            const pts = Scanner.corners;
+            
+            const srcTri = cv.matFromArray(4,1,cv.CV_32FC2, [pts[0].x*w,pts[0].y*h, pts[1].x*w,pts[1].y*h, pts[2].x*w,pts[2].y*h, pts[3].x*w,pts[3].y*h]);
+            
+            const widthA = Math.hypot((pts[1].x-pts[0].x)*w, (pts[1].y-pts[0].y)*h);
+            const widthB = Math.hypot((pts[2].x-pts[3].x)*w, (pts[2].y-pts[3].y)*h);
+            let finalW = Math.max(widthA, widthB);
+
+            const heightA = Math.hypot((pts[3].x-pts[0].x)*w, (pts[3].y-pts[0].y)*h);
+            const heightB = Math.hypot((pts[2].x-pts[1].x)*w, (pts[2].y-pts[1].y)*h);
+            let finalH = Math.max(heightA, heightB);
+
+            // RESOLUCIÓN HD Y FULL HD SEGÚN AJUSTES
+            const qualitySetting = Settings.data.quality;
+            let targetMax = 1280; // Media (HD)
+            if (qualitySetting >= 0.9) targetMax = 1920; // Alta (Full HD)
+            else if (qualitySetting <= 0.5) targetMax = 1024; // Baja
+
+            const maxDimension = Math.max(finalW, finalH);
+            const scale = Math.min(targetMax / maxDimension, 1); 
+            finalW *= scale;
+            finalH *= scale;
+
+            const dstTri = cv.matFromArray(4,1,cv.CV_32FC2, [0,0, finalW,0, finalW,finalH, 0,finalH]);
+            const M = cv.getPerspectiveTransform(srcTri, dstTri);
+            const dst = new cv.Mat();
+            
+            cv.warpPerspective(src, dst, M, new cv.Size(finalW, finalH));
+            
+            Scanner.processed = dst;
+            src.delete(); srcTri.delete(); dstTri.delete(); M.delete();
+            
+            document.getElementById('page-indicator').innerText = `Página ${Session.pages.length + 1}`;
+            App.showScreen('screen-preview');
+            Scanner.applyFilter('magic');
+            Loader.hide();
+        }, 50);
+    },
+    applyFilter: (type, btn) => {
+        if(!Scanner.processed) return;
+        if(btn) { document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
+        Loader.show("Aplicando...");
+        setTimeout(() => {
+            let src = Scanner.processed.clone();
+            let dst = new cv.Mat();
+            
+            if(type === 'magic') {
+                let lab = new cv.Mat(); cv.cvtColor(src, lab, cv.COLOR_RGBA2RGB); cv.cvtColor(lab, lab, cv.COLOR_RGB2Lab);
+                let p = new cv.MatVector(); cv.split(lab, p);
+                let clahe = new cv.CLAHE(2.0, new cv.Size(8,8)); clahe.apply(p.get(0), p.get(0));
+                cv.merge(p, lab); cv.cvtColor(lab, dst, cv.COLOR_Lab2RGB);
+                lab.delete(); p.delete(); clahe.delete();
+            } else if(type === 'bw') {
+                cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+                cv.adaptiveThreshold(dst, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 15, 10);
+            } else {
+                dst = src.clone();
+            }
+            
+            cv.imshow('preview-canvas', dst);
+            Scanner.currentFilter = type;
+            src.delete(); dst.delete(); Loader.hide();
+        }, 10);
+    },
+    toggleSlider: () => { 
+        const el = document.getElementById('slider-box');
+        el.style.display = el.style.display === 'flex' ? 'none' : 'flex';
+    },
+    updateBrightness: (v) => { },
+    sortCorners: () => {
+        let p = Scanner.corners;
+        p.sort((a,b)=>a.y-b.y);
+        let t = p.slice(0,2).sort((a,b)=>a.x-b.x);
+        let b = p.slice(2,4).sort((a,b)=>a.x-b.x);
+        Scanner.corners = [t[0],t[1],b[1],b[0]];
+    }
+};
+
+/* =========================================
+   4. NUEVA HERRAMIENTA: MAR-IA
+   ========================================= */
+const MariaTool = {
+    speechSynth: window.speechSynthesis,
+    utterance: null,
+    isReading: false,
+
+    trigger: () => {
+        document.getElementById('maria-input').click();
+    },
+    handleFile: async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        Loader.show("Analizando con OCR...");
+        
+        try {
+            let text = "";
+            if (file.type === "application/pdf") {
+                text = "Extracción de PDF no soportada en OCR local básico. Por favor use una imagen.";
+            } else {
+                const worker = await Tesseract.createWorker('spa');
+                const ret = await worker.recognize(file);
+                text = ret.data.text;
+                await worker.terminate();
+            }
+            
+            if(text.trim().length < 10) {
+                alert("No se detectó suficiente texto en la imagen.");
+                Loader.hide();
+                return;
+            }
+
+            MariaTool.queryAI(text);
+        } catch (err) {
+            console.error(err);
+            alert("Error al procesar archivo.");
+            Loader.hide();
+        }
+        e.target.value = '';
+    },
+    queryAI: async (text) => {
+        Loader.show("MAR-IA está pensando...");
+        try {
+            const systemPrompt = "Eres un asistente útil que resume textos. Responde solo con texto plano en español, sin markdown, sin emojis, de forma clara y explicativa para un usuario común.";
+            const userPrompt = `Analiza el siguiente texto extraído de un documento y genera un resumen explicativo claro:\n\n${text}`;
+            
+            // CONEXIÓN DIRECTA A API DE DEEPSEEK
+            const response = await fetch('https://api.deepseek.com/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${MARIA_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "deepseek-chat",
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: userPrompt }
+                    ],
+                    stream: false
+                })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                console.error("DeepSeek API Error:", errData);
+                throw new Error("Error en la respuesta de la API de DeepSeek");
+            }
+
+            const data = await response.json();
+            const summary = data.choices[0].message.content;
+            
+            MariaTool.showModal(summary);
+        } catch (err) {
+            console.error(err);
+            alert("Error consultando a MAR-IA. Verifique su conexión.");
+        }
+        Loader.hide();
+    },
+    showModal: (text) => {
+        document.getElementById('maria-result-text').innerText = text;
+        document.getElementById('modal-maria').classList.add('active');
+        MariaTool.utterance = new SpeechSynthesisUtterance(text);
+        MariaTool.utterance.lang = 'es-MX';
+        MariaTool.utterance.onend = () => MariaTool.resetSpeechUI();
+    },
+    closeModal: () => {
+        MariaTool.stopSpeech();
+        document.getElementById('modal-maria').classList.remove('active');
+    },
+    toggleSpeech: () => {
+        if(MariaTool.isReading) {
+            if(MariaTool.speechSynth.paused) {
+                MariaTool.speechSynth.resume();
+                MariaTool.updateSpeechUI(true);
+            } else {
+                MariaTool.speechSynth.pause();
+                MariaTool.updateSpeechUI(false, "Continuar");
+            }
+        } else {
+            MariaTool.speechSynth.speak(MariaTool.utterance);
+            MariaTool.isReading = true;
+            MariaTool.updateSpeechUI(true);
+        }
+    },
+    stopSpeech: () => {
+        MariaTool.speechSynth.cancel();
+        MariaTool.resetSpeechUI();
+    },
+    updateSpeechUI: (active, label = "Pausar") => {
+        const btn = document.getElementById('btn-maria-voice');
+        btn.innerHTML = `<span class="material-icons-round" style="vertical-align: middle; margin-right: 8px;">${active ? 'pause' : 'play_arrow'}</span>${label}`;
+    },
+    resetSpeechUI: () => {
+        MariaTool.isReading = false;
+        MariaTool.updateSpeechUI(false, "Leer resumen");
+    }
+};
+
+/* =========================================
+   5. NUEVA HERRAMIENTA: GESTOR ALMACENAMIENTO
+   ========================================= */
+const StorageTool = {
+    selectedIds: new Set(),
+    open: async () => {
+        const docs = await DB.getAll();
+        const list = document.getElementById('storage-list');
+        list.innerHTML = '';
+        StorageTool.selectedIds.clear();
+        
+        if(docs.length === 0) {
+            list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted)">No hay documentos</div>';
+        } else {
+            docs.forEach(d => {
+                const item = document.createElement('div');
+                item.style.cssText = 'padding:15px 20px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:15px; cursor:pointer;';
+                item.innerHTML = `
+                    <input type="checkbox" style="transform:scale(1.3);" onchange="StorageTool.toggle(${d.id}, this)">
+                    <img src="${d.thumb}" style="width:40px; height:40px; object-fit:cover; border-radius:8px; background:#eee;">
+                    <div style="flex:1; overflow:hidden;">
+                        <div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${d.name}</div>
+                        <div style="font-size:12px; color:var(--text-muted);">${new Date(d.date).toLocaleDateString()}</div>
+                    </div>
+                    <div style="font-size:12px; font-weight:600; color:var(--text-muted);">${(d.pages||[]).length} pág</div>
+                `;
+                item.onclick = (e) => {
+                    if(e.target.type !== 'checkbox') {
+                        const cb = item.querySelector('input');
+                        cb.checked = !cb.checked;
+                        StorageTool.toggle(d.id, cb);
+                    }
+                };
+                list.appendChild(item);
+            });
+        }
+        document.getElementById('modal-storage').classList.add('active');
+    },
+    toggle: (id, cb) => {
+        if(cb.checked) StorageTool.selectedIds.add(id);
+        else StorageTool.selectedIds.delete(id);
+    },
+    deleteSelected: async () => {
+        const count = StorageTool.selectedIds.size;
+        if(count === 0) return alert("Selecciona al menos un documento");
+        
+        if(confirm(`¿Eliminar ${count} documentos seleccionados? Esta acción no se puede deshacer.`)) {
+            Loader.show("Eliminando...");
+            const ids = Array.from(StorageTool.selectedIds);
+            for(let id of ids) {
+                await DB.delete(id);
+            }
+            StorageTool.close();
+            await App.loadDocs();
+            Settings.updateStats();
+            Loader.hide();
+        }
+    },
+    close: () => {
+        document.getElementById('modal-storage').classList.remove('active');
+    }
+};
+
+/* =========================================
+   6. BASE DE DATOS Y UTILIDADES (UPDATED)
+   ========================================= */
+const DB={
+    db:null,
+    init:()=>new Promise(r=>{
+        let req=indexedDB.open("ScannerProDB_V4",2);
+        req.onupgradeneeded=e=>{
+            let db=e.target.result;
+            if(!db.objectStoreNames.contains('docs')) db.createObjectStore('docs',{keyPath:'id'});
+        };
+        req.onsuccess=e=>{DB.db=e.target.result;r()};
+    }),
+    add: (d) => new Promise(async (resolve) => {
+        // Validación Límite 100 Documentos
+        const count = await DB.count();
+        if (count >= 100) {
+            alert("Has alcanzado el límite máximo de 100 documentos. Elimina alguno para continuar.");
+            resolve(false);
+            return;
+        }
+
+        let t = DB.db.transaction(['docs'], 'readwrite');
+        t.objectStore('docs').add(d);
+        t.oncomplete = () => resolve(true);
+        t.onerror = () => resolve(false);
+    }),
+    count: () => new Promise(r => {
+        let t = DB.db.transaction(['docs'], 'readonly');
+        let req = t.objectStore('docs').count();
+        req.onsuccess = () => r(req.result);
+        req.onerror = () => r(0);
+    }),
+    getAll:()=>new Promise(r=>{let t=DB.db.transaction(['docs'],'readonly');let q=t.objectStore('docs').getAll();q.onsuccess=()=>r(q.result.reverse())}),
+    delete:id=>new Promise(r=>{let t=DB.db.transaction(['docs'],'readwrite');t.objectStore('docs').delete(id);t.oncomplete=r;}),
+    getStorageInfo: () => new Promise(r => {
+        let t = DB.db.transaction(['docs'], 'readonly');
+        let req = t.objectStore('docs').getAll();
+        req.onsuccess = () => {
+            const docs = req.result;
+            const count = docs.length;
+            // Estimación simple de tamaño
+            const sizeBytes = JSON.stringify(docs).length;
+            const sizeMB = (sizeBytes / (1024 * 1024)).toFixed(2);
+            r({ count, sizeMB });
+        };
+    })
+};
+
+const Settings = {
+    data: { quality: 0.7, autocrop: true },
+    load: () => {
+        const s = localStorage.getItem('scan_settings');
+        if(s) Settings.data = JSON.parse(s);
+        document.getElementById('set-quality').value = Settings.data.quality;
+        Settings.updateStats();
+    },
+    save: () => {
+        Settings.data.quality = parseFloat(document.getElementById('set-quality').value);
+        localStorage.setItem('scan_settings', JSON.stringify(Settings.data));
+    },
+    updateStats: async () => {
+        const info = await DB.getStorageInfo();
+        const elCount = document.getElementById('storage-count');
+        const elSize = document.getElementById('storage-size');
+        const elAvail = document.getElementById('storage-available');
+        
+        if(elCount) elCount.innerText = `${info.count} / 100`;
+        if(elSize) elSize.innerText = `${info.sizeMB} MB`;
+        
+        if(elAvail && navigator.storage && navigator.storage.estimate) {
+            try {
+                const quota = await navigator.storage.estimate();
+                if(quota.quota) {
+                    const avail = (quota.quota - quota.usage) / (1024 * 1024);
+                    elAvail.innerText = avail > 1000 ? `${(avail/1024).toFixed(1)} GB` : `${avail.toFixed(0)} MB`;
+                } else {
+                    elAvail.innerText = "N/A";
+                }
+            } catch(e) { elAvail.innerText = "N/A"; }
+        } else if (elAvail) {
+            elAvail.innerText = "N/A";
+        }
+    }
+};
+
+const PDF = {
+    generate: (id) => {
+        Loader.show("Generando PDF...");
+        const t = DB.db.transaction(['docs'],'readonly');
+        const store = t.objectStore('docs');
+        const req = store.get(id);
+
+        req.onsuccess = async () => {
+            const doc = req.result;
+            if (!doc) {
+                Loader.hide();
+                return alert("Documento no encontrado");
+            }
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ unit: 'mm', format: 'letter' });
+
+            // Documento INE (una sola página ya renderizada)
+            if (doc.name === "Copia INE") {
+                const img = new Image();
+                img.src = doc.pages[0];
+                await new Promise(r => img.onload = r);
+
+                pdf.addImage(img, 'JPEG', 0, 0, 215.9, 279.4);
+            }
+            // Documento escaneado normal (multipágina)
+            else {
+                for (let i = 0; i < doc.pages.length; i++) {
+                    if (i > 0) pdf.addPage();
+                    const img = new Image();
+                    img.src = doc.pages[i];
+                    await new Promise(r => img.onload = r);
+
+                    const pageW = 215.9;
+                    const pageH = 279.4;
+                    const ratio = img.width / img.height;
+
+                    let w = pageW;
+                    let h = w / ratio;
+                    if (h > pageH) {
+                        h = pageH;
+                        w = h * ratio;
+                    }
+
+                    const x = (pageW - w) / 2;
+                    const y = (pageH - h) / 2;
+
+                    pdf.addImage(img, 'JPEG', x, y, w, h);
+                }
+            }
+
+            pdf.save(`${doc.name.replace(/\s+/g,'_')}.pdf`);
+            Loader.hide();
+        };
+
+        req.onerror = () => {
+            Loader.hide();
+            alert("Error al generar PDF");
+        };
+    }
+};
+
+/* =========================================
+   LOADER GLOBAL
+   ========================================= */
+const Loader = {
+    show: (msg = "Procesando...") => {
+        document.getElementById('status-msg').innerText = msg;
+        document.getElementById('loader').classList.remove('hidden');
+    },
+    hide: () => {
+        document.getElementById('loader').classList.add('hidden');
+    }
+};
+
+/* =========================================
+   INICIO DE LA APP
+   ========================================= */
+window.addEventListener('load', () => {
+    App.init();
+});
+</script>
+</body>
+</html>
